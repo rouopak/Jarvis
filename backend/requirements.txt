@@ -1,8 +1,6 @@
+flask
+flask-cors
 mistralai
-SpeechRecognition
-gTTS
-playsound
 wikipedia
 python-dotenv
-pyaudio
-
+gunicorn
