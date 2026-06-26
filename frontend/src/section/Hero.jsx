@@ -62,68 +62,81 @@ const Hero = () => {
             return;
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognitionRef.current = recognition;
+        const startRecognitionOnly = () => {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognitionRef.current = recognition;
 
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
 
-        recognition.onstart = () => {
-            setIsListening(true);
-            setShowChat(true);
-            setStatusText("Listening...");
-        };
+            recognition.onstart = () => {
+                setIsListening(true);
+                setStatusText("Listening...");
+            };
 
-        recognition.onresult = async (event) => {
-            const transcript = event.results[0][0].transcript;
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript;
 
-            try {
-                const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+                try {
+                    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-                setStatusText("Thinking...");
-                const response = await fetch(`${backendUrl}/api/query`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: transcript })
-                });
+                    setStatusText("Thinking...");
+                    const response = await fetch(`${backendUrl}/api/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: transcript })
+                    });
 
-                const data = await response.json();
-                if (data.response) {
-                    setMessages(prev => [...prev, { role: 'user', content: transcript }, { role: 'ai', content: data.response }]);
-                    setStatusText("");
-                    speakResponse(data.response);
-                } else {
-                    setStatusText("Error getting response from Jarvis.");
+                    const data = await response.json();
+                    if (data.response) {
+                        setMessages(prev => [...prev, { role: 'user', content: transcript }, { role: 'ai', content: data.response }]);
+                        setStatusText("");
+                        speakResponse(data.response);
+                    } else {
+                        setStatusText("Error getting response from Jarvis.");
+                    }
+                } catch (error) {
+                    console.error("Backend error:", error);
+                    setStatusText("Backend network error.");
                 }
-            } catch (error) {
-                console.error("Backend error:", error);
-                setStatusText("Backend network error.");
-            }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                if (event.error === 'network') {
+                    setStatusText("Network error. (Brave blocks this API. Please try Chrome!)");
+                } else {
+                    setStatusText(`Error: ${event.error}`);
+                }
+                setIsListening(false);
+            };
+
+            recognition.onend = () => {
+                setIsListening(false);
+                if (statusText === "Listening...") {
+                    setStatusText("Tap to speak");
+                }
+            };
+
+            recognition.start();
         };
 
-        recognition.onerror = (event) => {
-            console.error("Speech recognition error", event.error);
-            if (event.error === 'network') {
-                setStatusText("Network error. (Brave blocks this API. Please try Chrome!)");
-            } else {
-                setStatusText(`Error: ${event.error}`);
-            }
-            setIsListening(false);
-        };
-
-        recognition.onend = () => {
-            setIsListening(false);
-            if (statusText === "Listening...") {
-                setStatusText("Tap to speak");
-            }
-        };
-
-        recognition.start();
+        if (!showChat) {
+            setShowChat(true);
+            const greeting = "Hello i am Jarvis, give me sometime to connect to my Brain, till then bet your house on stake";
+            setMessages([{ role: 'ai', content: greeting }]);
+            setStatusText("Speaking...");
+            speakResponse(greeting, () => {
+                startRecognitionOnly();
+            });
+        } else {
+            startRecognitionOnly();
+        }
     };
 
-    const speakResponse = (text) => {
+    const speakResponse = (text, onEndCallback) => {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel(); // Stop any current speech
             const utterance = new SpeechSynthesisUtterance(text);
@@ -134,13 +147,22 @@ const Hero = () => {
             if (englishVoice) {
                 utterance.voice = englishVoice;
             }
+            if (onEndCallback) {
+                utterance.onend = onEndCallback;
+                utterance.onerror = onEndCallback; // fallback in case of synthesis block/error
+            }
             window.speechSynthesis.speak(utterance);
+        } else if (onEndCallback) {
+            onEndCallback();
         }
     };
 
     const clearAndCloseChat = () => {
         if (recognitionRef.current) {
             try { recognitionRef.current.stop(); } catch (e) { }
+        }
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
         }
         setMessages([]);
         setShowChat(false);
@@ -163,45 +185,51 @@ const Hero = () => {
             <div className={`relative z-10 w-full max-w-6xl mx-auto px-4 flex items-center justify-center transition-all duration-700 ease-in-out ${showChat ? 'flex-col md:flex-row gap-8 md:gap-12' : 'flex-col'}`}>
 
                 {!showChat && (
-                    <div className="max-w-md w-full mx-auto mb-8 px-4 z-50">
+                    <div className="max-w-2xl w-full mx-auto mb-8 px-4 z-50">
                         <h6 className="bg-[#18181c]/90 text-white/80 text-sm font-medium px-6 py-4 rounded-2xl border border-white/10 shadow-lg text-center backdrop-blur-md leading-relaxed">
                             {isMobile
                                 ? "Hey, I just noticed you're using a mobile device. Use a desktop for the best experience! 😙"
-                                : "Note: This site has some restrictions on speech recognition. Use Chrome or Edge for the best experience."
+                                : "Note: This site has some restrictions on speech recognition. Use Chrome or Edge for the best experience. Also, on first use, the AI response may take 50+ seconds as the backend wakes up."
                             }
                         </h6>
                     </div>
                 )}
 
                 {/* Text Elements (Hides when chat is active) */}
-                <div className={`text-center w-full transition-all duration-500 pointer-events-none ${showChat ? 'opacity-0 h-0 overflow-hidden scale-95 absolute' : 'opacity-100 h-auto scale-100 mb-16 relative'}`}>
-                    <h1 className="text-[44px] font-semibold text-white tracking-tight">Tap to speak</h1>
-                    <p className="mt-5 text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase">
-                        The Quiet Intelligence
-                    </p>
-                </div>
+                {!isMobile && (
+                    <div className={`text-center w-full transition-all duration-500 pointer-events-none ${showChat ? 'opacity-0 h-0 overflow-hidden scale-95 absolute' : 'opacity-100 h-auto scale-100 mb-16 relative'}`}>
+                        <h1 className="text-[44px] font-semibold text-white tracking-tight">Tap to speak</h1>
+                        <p className="mt-5 text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase">
+                            The Quiet Intelligence
+                        </p>
+                    </div>
+                )}
 
                 {/* Microphone Button */}
-                <div className={`flex justify-center transition-all duration-700 flex-shrink-0 z-20 ${showChat ? 'order-first' : ''}`}>
-                    <button
-                        onClick={startListening}
-                        className={`relative flex items-center justify-center bg-[#25252b] rounded-full transition-all duration-500 shadow-[0_0_40px_rgba(0,0,0,0.5)] group cursor-pointer ${isListening ? 'scale-110 shadow-[0_0_60px_rgba(99,102,241,0.6)] border-2 border-indigo-500' : 'hover:bg-[#2c2c34]'} ${showChat ? 'w-32 h-32 md:w-40 md:h-40' : 'w-36 h-36'}`}
-                    >
-                        <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        <svg width={showChat ? "48" : "40"} height={showChat ? "48" : "40"} viewBox="0 0 24 24" fill="none" stroke={isListening ? "#ffffff" : "#a79fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`relative z-10 transition-all duration-500 ${isListening ? 'animate-pulse' : ''}`}>
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                            <line x1="12" x2="12" y1="19" y2="22" />
-                        </svg>
-                    </button>
-                </div>
+                {!isMobile && (
+                    <div className={`flex justify-center transition-all duration-700 flex-shrink-0 z-20 ${showChat ? 'order-first' : ''}`}>
+                        <button
+                            onClick={startListening}
+                            className={`relative flex items-center justify-center bg-[#25252b] rounded-full transition-all duration-500 shadow-[0_0_40px_rgba(0,0,0,0.5)] group cursor-pointer ${isListening ? 'scale-110 shadow-[0_0_60px_rgba(99,102,241,0.6)] border-2 border-indigo-500' : 'hover:bg-[#2c2c34]'} ${showChat ? 'w-32 h-32 md:w-40 md:h-40' : 'w-36 h-36'}`}
+                        >
+                            <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <svg width={showChat ? "48" : "40"} height={showChat ? "48" : "40"} viewBox="0 0 24 24" fill="none" stroke={isListening ? "#ffffff" : "#a79fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`relative z-10 transition-all duration-500 ${isListening ? 'animate-pulse' : ''}`}>
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" x2="12" y1="19" y2="22" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
 
                 {/* ChatBox (Only shows when active) */}
-                <div className={`w-full md:flex-1 transition-all duration-700 ease-in-out z-10 ${showChat ? 'opacity-100 h-[60vh] md:h-[70vh] relative' : 'opacity-0 h-0 w-0 overflow-hidden absolute pointer-events-none'}`}>
-                    <div className="w-full h-full">
-                        <ChatBox messages={messages} statusText={statusText} onClose={clearAndCloseChat} />
+                {!isMobile && (
+                    <div className={`w-full md:flex-1 transition-all duration-700 ease-in-out z-10 ${showChat ? 'opacity-100 h-[60vh] md:h-[70vh] relative' : 'opacity-0 h-0 w-0 overflow-hidden absolute pointer-events-none'}`}>
+                        <div className="w-full h-full">
+                            <ChatBox messages={messages} statusText={statusText} onClose={clearAndCloseChat} />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </section>
     )
