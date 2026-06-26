@@ -52,6 +52,17 @@ const Hero = () => {
     const recognitionRef = React.useRef(null);
 
     const startListening = () => {
+        // Unlock SpeechSynthesis for mobile browsers on user gesture
+        if ('speechSynthesis' in window) {
+            try {
+                const silentUtterance = new SpeechSynthesisUtterance(' ');
+                silentUtterance.volume = 0;
+                window.speechSynthesis.speak(silentUtterance);
+            } catch (e) {
+                console.warn("Speech synthesis unlock failed:", e);
+            }
+        }
+
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             setStatusText("Browser not supported. Try Chrome or Edge.");
             return;
@@ -188,7 +199,7 @@ const Hero = () => {
                     <div className="max-w-2xl w-full mx-auto mb-8 px-4 z-50">
                         <h6 className="bg-[#18181c]/90 text-white/80 text-sm font-medium px-6 py-4 rounded-2xl border border-white/10 shadow-lg text-center backdrop-blur-md leading-relaxed">
                             {isMobile
-                                ? "Hey, I just noticed you're using a mobile device. Use a desktop for the best experience! 😙"
+                                ? "Note: For the best experience on mobile, please use Safari (iOS) or Chrome (Android) and ensure microphone access is allowed."
                                 : "Note: This site has some restrictions on speech recognition. Use Chrome or Edge for the best experience. Also, on first use, the AI response may take 50+ seconds as the backend wakes up."
                             }
                         </h6>
@@ -196,40 +207,34 @@ const Hero = () => {
                 )}
 
                 {/* Text Elements (Hides when chat is active) */}
-                {!isMobile && (
-                    <div className={`text-center w-full transition-all duration-500 pointer-events-none ${showChat ? 'opacity-0 h-0 overflow-hidden scale-95 absolute' : 'opacity-100 h-auto scale-100 mb-16 relative'}`}>
-                        <h1 className="text-[44px] font-semibold text-white tracking-tight">Tap to speak</h1>
-                        <p className="mt-5 text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase">
-                            The Quiet Intelligence
-                        </p>
-                    </div>
-                )}
+                <div className={`text-center w-full transition-all duration-500 pointer-events-none ${showChat ? 'opacity-0 h-0 overflow-hidden scale-95 absolute' : 'opacity-100 h-auto scale-100 mb-8 md:mb-16 relative'}`}>
+                    <h1 className="text-[36px] md:text-[44px] font-semibold text-white tracking-tight">Tap to speak</h1>
+                    <p className="mt-3 md:mt-5 text-[10px] md:text-[11px] font-bold text-gray-400 tracking-[0.3em] uppercase">
+                        The Quiet Intelligence
+                    </p>
+                </div>
 
                 {/* Microphone Button */}
-                {!isMobile && (
-                    <div className={`flex justify-center transition-all duration-700 flex-shrink-0 z-20 ${showChat ? 'order-first' : ''}`}>
-                        <button
-                            onClick={startListening}
-                            className={`relative flex items-center justify-center bg-[#25252b] rounded-full transition-all duration-500 shadow-[0_0_40px_rgba(0,0,0,0.5)] group cursor-pointer ${isListening ? 'scale-110 shadow-[0_0_60px_rgba(99,102,241,0.6)] border-2 border-indigo-500' : 'hover:bg-[#2c2c34]'} ${showChat ? 'w-32 h-32 md:w-40 md:h-40' : 'w-36 h-36'}`}
-                        >
-                            <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            <svg width={showChat ? "48" : "40"} height={showChat ? "48" : "40"} viewBox="0 0 24 24" fill="none" stroke={isListening ? "#ffffff" : "#a79fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`relative z-10 transition-all duration-500 ${isListening ? 'animate-pulse' : ''}`}>
-                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                <line x1="12" x2="12" y1="19" y2="22" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
+                <div className={`flex justify-center transition-all duration-700 flex-shrink-0 z-20 ${showChat ? 'order-first' : ''}`}>
+                    <button
+                        onClick={startListening}
+                        className={`relative flex items-center justify-center bg-[#25252b] rounded-full transition-all duration-500 shadow-[0_0_40px_rgba(0,0,0,0.5)] group cursor-pointer ${isListening ? 'scale-110 shadow-[0_0_60px_rgba(99,102,241,0.6)] border-2 border-indigo-500' : 'hover:bg-[#2c2c34]'} ${showChat ? 'w-24 h-24 md:w-40 md:h-40' : 'w-32 h-32 md:w-36 md:h-36'}`}
+                    >
+                        <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <svg width={showChat ? (isMobile ? "36" : "48") : "40"} height={showChat ? (isMobile ? "36" : "48") : "40"} viewBox="0 0 24 24" fill="none" stroke={isListening ? "#ffffff" : "#a79fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`relative z-10 transition-all duration-500 ${isListening ? 'animate-pulse' : ''}`}>
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" x2="12" y1="19" y2="22" />
+                        </svg>
+                    </button>
+                </div>
 
                 {/* ChatBox (Only shows when active) */}
-                {!isMobile && (
-                    <div className={`w-full md:flex-1 transition-all duration-700 ease-in-out z-10 ${showChat ? 'opacity-100 h-[60vh] md:h-[70vh] relative' : 'opacity-0 h-0 w-0 overflow-hidden absolute pointer-events-none'}`}>
-                        <div className="w-full h-full">
-                            <ChatBox messages={messages} statusText={statusText} onClose={clearAndCloseChat} />
-                        </div>
+                <div className={`w-full md:flex-1 transition-all duration-700 ease-in-out z-10 ${showChat ? 'opacity-100 h-[50vh] md:h-[70vh] relative' : 'opacity-0 h-0 w-0 overflow-hidden absolute pointer-events-none'}`}>
+                    <div className="w-full h-full">
+                        <ChatBox messages={messages} statusText={statusText} onClose={clearAndCloseChat} />
                     </div>
-                )}
+                </div>
             </div>
         </section>
     )
