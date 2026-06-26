@@ -199,7 +199,7 @@ const Hero = () => {
                     <div className="max-w-2xl w-full mx-auto mb-8 px-4 z-50">
                         <h6 className="bg-[#18181c]/90 text-white/80 text-sm font-medium px-6 py-4 rounded-2xl border border-white/10 shadow-lg text-center backdrop-blur-md leading-relaxed">
                             {isMobile
-                                ? "Note: For the best experience on mobile, please use Safari (iOS) or Chrome (Android) and ensure microphone access is allowed."
+                                ? "Note: Hey there I saw you using mobile, please use Safari (iOS) or Chrome (Android) on desktop for better expereince, NOT so optimized for mobile 🙇‍♂️"
                                 : "Note: This site has some restrictions on speech recognition. Use Chrome or Edge for the best experience. Also, on first use, the AI response may take 50+ seconds as the backend wakes up."
                             }
                         </h6>
