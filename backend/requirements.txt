@@ -1,0 +1,8 @@
+mistralai
+SpeechRecognition
+gTTS
+playsound
+wikipedia
+python-dotenv
+pyaudio
+
