@@ -27,6 +27,16 @@ def process_command(query, query_lower):
             return f"According to Wikipedia, {summary}"
         except Exception as e:
             return "I couldn't fetch that information from Wikipedia right now."
+    #Who's your creator query
+    if any(x in query_lower for x in [
+        "creator",
+        "who created you",
+        "who made you",
+        "who built you",
+        "who is your creator"
+    ]):
+        return "My creator is Rupak, the greatest gambler of the 21st century."
+    
 
     # Fallback to AI
     return get_ai_response(query)
@@ -34,16 +44,15 @@ def process_command(query, query_lower):
 @app.route('/api/query', methods=['POST'])
 def handle_query():
     data = request.json
+   
     if not data:
         return jsonify({'error': 'No data provided'}), 400
         
     query = data.get('query', '')
     if not query:
         return jsonify({'error': 'No query provided'}), 400
-        
     query_lower = query.lower().strip()
     response = process_command(query, query_lower)
-    
     return jsonify({'response': response})
 
 @app.route('/', methods=['GET'])
